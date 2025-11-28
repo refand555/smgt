@@ -1,18 +1,23 @@
 import { useState } from "react";
-import { Eye, EyeOff, ArrowLeft} from "lucide-react";
+import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import  supabase  from "../lib/supabaseClient";
+import supabase from "../lib/supabaseClient";
 
 export default function Register() {
- const [username, setName] = useState("");
- const [email, setEmail] = useState("");
- const [alamat, setAlamat] = useState("");
- const [no_hp, setno_hp] = useState("");
- const [password, setPassword] = useState("");
- const [confirmPassword, setConfirmPassword] = useState("");
+  const [username, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [alamat, setAlamat] = useState("");
+  const [no_hp, setno_hp] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
- const handleRegister = async () => {
-  // 1. VALIDASI SEBELUM APA PUN!
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const navigate = useNavigate();
+
+  const handleRegister = async () => {
+  // 1. VALIDASI
   if (!username || !email || !alamat || !no_hp || !password || !confirmPassword) {
     alert("Semua data wajib diisi!");
     return;
@@ -23,32 +28,40 @@ export default function Register() {
     return;
   }
 
-  // 2. SIGN UP SUPABASE
+  // 2. SIGN UP KE SUPABASE AUTH
   const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
+    email: email,
+    password: password,
   });
 
   if (error) {
-    alert(error.message);
+    console.error("Error signUp:", error);
+    alert("Gagal melakukan registrasi auth: " + error.message);
     return;
   }
 
-  // 3. INSERT KE DATABASE
+  const userId = data?.user?.id;
+  if (!userId) {
+    alert("Gagal mendapatkan ID user dari Supabase.");
+    return;
+  }
+
+  // 3. INSERT KE TABEL public.profiles
   const { error: insertError } = await supabase
-    .from("user")
+    .from("profiles")
     .insert({
-      id: data.user.id,
-      username,
-      email,
-      password,
-      alamat,
+      id: userId,          // nyambung ke auth.users
+      usernames: username,
+      email: email,
+      alamat: alamat,
       no_hp: no_hp,
       role: "user",
+      pass: password,      // sesuai kolom di tabel yang kamu bikin
     });
 
   if (insertError) {
-    alert(insertError.message);
+    console.error("Error insert profiles:", insertError);
+    alert("Gagal menyimpan data profil: " + insertError.message);
     return;
   }
 
@@ -56,35 +69,28 @@ export default function Register() {
   navigate("/login");
 };
 
-
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-
-  const navigate = useNavigate();
-
   return (
     <main className="min-h-screen flex items-center justify-center bg-[#FAF7F0] px-4">
       <button
-  className="absolute left-4 top-4 p-2 bg-white/80 rounded-full shadow-sm hover:scale-110 transition"
-  onClick={() => navigate(-1)}
->
-  <ArrowLeft size={20} className="text-black" />
-</button>
+        className="absolute left-4 top-4 p-2 bg-white/80 rounded-full shadow-sm hover:scale-110 transition"
+        onClick={() => navigate(-1)}
+      >
+        <ArrowLeft size={20} className="text-black" />
+      </button>
 
       <div className="bg-white shadow-lg rounded-2xl p-8 w-full max-w-md">
-        
         <h1 className="text-3xl font-bold text-gray-900 text-center mb-6">
           Daftar Akun Baru
         </h1>
 
         <form
           className="space-y-5"
-             onSubmit={(e) => {
-             e.preventDefault();
-             handleRegister();      // kembali ke halaman login
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleRegister();
           }}
         >
-          {/* Name */}
+          {/* Nama Lengkap */}
           <div>
             <label className="text-sm font-medium text-gray-700">Nama Lengkap</label>
             <input
@@ -93,7 +99,8 @@ export default function Register() {
               value={username}
               onChange={(e) => setName(e.target.value)}
               className="w-full mt-1 px-4 py-4 rounded-xl outline-none bg-[#FAF7F0] border border-[#E5E1D8] focus:border-[#CFCBBF] focus:ring-2 focus:ring-[#D8D4CA] transition-all"
-              required/>
+              required
+            />
           </div>
 
           {/* Email */}
@@ -105,7 +112,8 @@ export default function Register() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full mt-1 px-4 py-4 rounded-xl outline-none bg-[#FAF7F0] border border-[#E5E1D8] focus:border-[#CFCBBF] focus:ring-2 focus:ring-[#D8D4CA] transition-all"
-              required/>
+              required
+            />
           </div>
 
           {/* Alamat */}
@@ -117,7 +125,8 @@ export default function Register() {
               value={alamat}
               onChange={(e) => setAlamat(e.target.value)}
               className="w-full mt-1 px-4 py-4 rounded-xl outline-none bg-[#FAF7F0] border border-[#E5E1D8] focus:border-[#CFCBBF] focus:ring-2 focus:ring-[#D8D4CA] transition-all"
-              required/>
+              required
+            />
           </div>
 
           {/* No Hp */}
@@ -129,7 +138,8 @@ export default function Register() {
               value={no_hp}
               onChange={(e) => setno_hp(e.target.value)}
               className="w-full mt-1 px-4 py-4 rounded-xl outline-none bg-[#FAF7F0] border border-[#E5E1D8] focus:border-[#CFCBBF] focus:ring-2 focus:ring-[#D8D4CA] transition-all"
-              required/>
+              required
+            />
           </div>
 
           {/* Password */}
@@ -152,7 +162,7 @@ export default function Register() {
             </button>
           </div>
 
-          {/* Confirm Password */}
+          {/* Konfirmasi Password */}
           <div className="relative">
             <label className="text-sm font-medium text-gray-700">Konfirmasi Password</label>
             <input
@@ -174,12 +184,10 @@ export default function Register() {
 
           <button
             type="submit"
-            // onClick={handleRegister}
             className="w-full bg-black text-white py-3 rounded-xl font-semibold hover:bg-black/90 transition"
           >
             Daftar
           </button>
-
         </form>
 
         <p className="text-center text-sm text-gray-600 mt-5">
@@ -188,7 +196,6 @@ export default function Register() {
             Masuk Sekarang
           </a>
         </p>
-
       </div>
     </main>
   );
